@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>EcoCollect - Recycling App</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+<style>
+@keyframes floatBG {0% {background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}}
+body{background:linear-gradient(-45deg,#a8edea,#fed6e3,#fbc2eb,#a6c1ee);background-size:400% 400%;animation:floatBG 20s ease infinite;margin:0;padding-top:70px;font-family:'Segoe UI',Arial,sans-serif;color:#333;}
+.navbar{background:linear-gradient(90deg,#a8edea,#fed6e3);box-shadow:0 3px 6px rgba(0,0,0,0.1);}
+.navbar-brand{font-weight:700;color:#333!important;}
+.card{background:#fff;border:none;border-radius:16px;box-shadow:0 4px 10px rgba(0,0,0,0.05);}
+.btn-primary{background:linear-gradient(135deg,#a1c4fd,#c2e9fb);border:none;color:#333;font-weight:600;transition:all 0.3s ease;}
+.btn-primary:hover{transform:scale(1.05);box-shadow:0 4px 15px rgba(0,0,0,0.2);}
+.btn-secondary{background:linear-gradient(135deg,#fbc2eb,#a6c1ee);border:none;color:#333;font-weight:600;transition:all 0.3s ease;}
+.btn-secondary:hover{transform:scale(1.05);box-shadow:0 4px 15px rgba(0,0,0,0.2);}
+.quiz-option{padding:12px;border-radius:10px;background:#fef9f9;margin-bottom:10px;cursor:pointer;transition:all 0.2s;}
+.quiz-option:hover{background:#f3f3f3;}
+.quiz-option.correct{background:#d4f6d4;border:2px solid #4caf50;}
+.quiz-option.incorrect{background:#fddcdc;border:2px solid #f44336;}
+#dashboard{min-height:90vh;}
+a{cursor:pointer;color:#0077b6;text-decoration:none;}
+a:hover{text-decoration:underline;}
+.progress-bar{transition:width 0.8s ease;}
+.stat-card{border-radius:12px;padding:20px;text-align:center;transition:all 0.3s;}
+.stat-card:hover{transform:scale(1.05);box-shadow:0 4px 15px rgba(0,0,0,0.2);}
+.loading{opacity:0.6;pointer-events:none;}
+.draggable-item{padding:8px;margin:4px;border:1px solid #333;border-radius:5px;background:#f3f3f3;cursor:grab;}
+.bin{transition:background-color 0.3s;}
+</style>
+</head>
+<body>
+
+<nav class="navbar fixed-top">
+  <div class="container-fluid">
+    <span class="navbar-brand"><i class="fas fa-recycle"></i> EcoCollect</span>
+    <button class="btn btn-sm btn-secondary" onclick="logout()">Logout</button>
+  </div>
+</nav>
+
+<div class="container-fluid px-5">
+
+<!-- Login Page -->
+<div id="loginPage" class="row justify-content-center">
+  <div class="col-md-5">
+    <div class="card p-4 my-5">
+      <h3 class="mb-3 text-center">Welcome to EcoCollect</h3>
+      <input id="email" class="form-control mb-3" placeholder="you@eco.com">
+      <input id="password" type="password" class="form-control mb-3" placeholder="password">
+      <div class="d-flex justify-content-center gap-3">
+        <button class="btn btn-primary" onclick="login()">Login</button>
+        <button class="btn btn-secondary" onclick="register()">Register</button>
+      </div>
+      <div id="loginMessage" class="mt-2 text-center"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Dashboard -->
+<div id="dashboard" style="display:none">
+  <div class="row">
+    <!-- Sidebar -->
+    <div class="col-md-3 mb-4">
+      <div class="card p-3 h-100">
+        <h5>Menu</h5>
+        <div><a onclick="show('stats')">📊 Dashboard</a></div>
+        <div><a onclick="show('pickup')">📦 Schedule Pickup</a></div>
+        <div><a onclick="show('guide')">📖 Eco Guide</a></div>
+        <div><a onclick="show('quiz')">📝 Eco Quiz</a></div>
+        <div><a onclick="show('funInteractions')">🎮 Fun Interaction</a></div>
+        <div><a onclick="show('communitySection')">👥 Community</a></div>
+        <hr>
+        <div id="userEmail" class="small text-muted"></div>
+      </div>
+    </div>
+
+    <!-- Main content -->
+    <div class="col-md-9">
+      <!-- Dashboard Stats -->
+      <div id="stats" class="card p-4 mb-4">
+        <h4 class="mb-3">Your Recycling Dashboard</h4>
+        <div class="row mb-3">
+          <div class="col-md-3"><div class="stat-card bg-light"><strong>Items Recycled</strong><div id="itemsRecycled" style="font-size:28px;">0</div></div></div>
+          <div class="col-md-3"><div class="stat-card bg-light"><strong>Total Weight (kg)</strong><div id="totalWeight" style="font-size:28px;">0</div></div></div>
+          <div class="col-md-3"><div class="stat-card bg-light"><strong>Carbon Offset (kg)</strong><div id="carbonOffset" style="font-size:28px;">0</div></div></div>
+          <div class="col-md-3"><div class="stat-card bg-light"><strong>XP Earned</strong><div id="xpEarned" style="font-size:28px;">0</div></div></div>
+        </div>
+        <div class="mb-3"><canvas id="monthlyChart" height="100"></canvas></div>
+        <div class="row mb-3">
+          <div class="col-md-6"><canvas id="materialsChart" height="150"></canvas></div>
+          <div class="col-md-6"><canvas id="quizChart" height="150"></canvas></div>
+        </div>
+        <h5>Carbon Offset Progress</h5>
+        <div class="progress mb-2" style="height:20px;">
+          <div id="carbonProgress" class="progress-bar bg-success" style="width:0%">0%</div>
+        </div>
+        <div class="mt-2" id="impactEquivalents">🌳 Trees saved: 0 | 💧 Water saved: 0L | ⚡ Energy saved: 0 kWh</div>
+        <div class="mt-3">
+          <p>Total pickups completed: <span id="totalPickups">0</span></p>
+          <p>Badges earned: <span id="badgesEarned">None</span></p>
+          <p>Consecutive engagement streak: <span id="streakDays">0</span> days</p>
+        </div>
+      </div>
+
+      <!-- Schedule Pickup -->
+      <div id="pickup" class="card p-4 mb-4" style="display:none">
+        <h4>Schedule a Pickup</h4>
+        <input type="date" id="pickupDate" class="form-control mb-2">
+        <input type="text" id="pickupLocation" class="form-control mb-2" placeholder="📍 Location">
+        <select id="pickupType" class="form-control mb-2">
+          <option value="">🚗 Pickup Type</option>
+          <option>Doorstep</option><option>Drop-off</option>
+        </select>
+        <input type="time" id="pickupTime" class="form-control mb-2">
+        <input type="text" id="pickupPhone" class="form-control mb-2" placeholder="📞 Phone">
+        <div id="pickupMaterials" class="mb-2">
+          <label><input type="checkbox" value="Plastics"> Plastics</label>
+          <label class="ms-2"><input type="checkbox" value="Metal"> Metal</label>
+          <label class="ms-2"><input type="checkbox" value="Paper"> Paper</label>
+        </div>
+        <textarea id="pickupNotes" class="form-control mb-2" placeholder="Notes (optional)"></textarea>
+        <button class="btn btn-primary" onclick="schedulePickup()">Save Pickup</button>
+
+        <h5 class="mt-4">📌 Pickup Tracker</h5>
+        <table class="table table-bordered table-striped mt-2">
+          <thead class="table-light">
+            <tr>
+              <th>Date</th><th>Time</th><th>Location</th><th>Type</th><th>Phone</th><th>Materials</th><th>Notes</th><th>Status</th><th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="pickupTracker"></tbody>
+        </table>
+      </div>
+
+      <!-- Eco Guide -->
+      <div id="guide" class="card p-4 mb-4" style="display:none">
+        <h4>📖 Eco Guide</h4>
+        <div id="guideCarousel" class="carousel slide" data-bs-ride="carousel">
+          <div class="carousel-inner text-center p-4" style="font-size:18px;">
+            <div class="carousel-item active">🌱 Reduce waste by using reusable bags, bottles, and containers.</div>
+            <div class="carousel-item">♻️ Separate recyclables properly: Paper, Plastic, Metal, Glass.</div>
+            <div class="carousel-item">💧 Conserve water: turn off taps, collect rainwater, fix leaks.</div>
+            <div class="carousel-item">⚡ Save energy: LED bulbs, switch off devices, use renewable energy.</div>
+            <div class="carousel-item">🍂 Compost food scraps to reduce landfill waste.</div>
+          </div>
+          <button class="carousel-control-prev" type="button" data-bs-target="#guideCarousel" data-bs-slide="prev">
+            <span class="carousel-control-prev-icon"></span>
+          </button>
+          <button class="carousel-control-next" type="button" data-bs-target="#guideCarousel" data-bs-slide="next">
+            <span class="carousel-control-next-icon"></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Eco Quiz -->
+      <div id="quiz" class="card p-4 mb-4" style="display:none">
+        <h4>📝 Eco Quiz</h4>
+        <div id="questionArea">
+          <h6 id="questionNumber"></h6>
+          <div id="questionText"></div>
+          <div id="options" class="mt-2"></div>
+          <button id="nextQ" class="btn btn-primary mt-3" onclick="nextQuestion()" disabled>Next</button>
+          <div id="quizStreak" class="mt-2"></div>
+        </div>
+        <div id="quizDone" style="display:none" class="text-center">
+          <h3>All Done!</h3>
+          <div id="quizScore" style="font-size:28px;color:#0077b6"></div>
+          <button class="btn btn-secondary mt-2" onclick="startQuiz()">Play Again</button>
+        </div>
+      </div>
+
+      <!-- Fun Interactions -->
+      <div id="funInteractions" class="card p-4 mb-4" style="display:none">
+        <h4>🎮 Recycling Drag & Drop Game</h4>
+        <div class="mb-3">
+          <div class="d-flex gap-3">
+            <div id="itemsPool" class="p-3 flex-fill bg-light rounded" style="min-height:150px;">
+              <p class="text-muted">Drag items from here to the correct bins</p>
+            </div>
+            <div id="bins" class="d-flex flex-column gap-2">
+              <div id="recyclableBin" class="p-3 bg-success text-white rounded bin" style="min-height:60px;">♻️ Recyclable</div>
+              <div id="nonRecyclableBin" class="p-3 bg-danger text-white rounded bin" style="min-height:60px;">🚫 Not Recyclable</div>
+            </div>
+          </div>
+          <div id="gameScore" class="mt-2 fw-bold">Score: 0</div>
+        </div>
+      </div>
+
+      <!-- Community Section -->
+      <div id="communitySection" class="card p-4 mb-4" style="display:none">
+        <h4>👥 Community</h4>
+        <div class="mb-3">
+          <h5>🏅 Leaderboard</h5>
+          <ul id="communityLeaderboard" class="list-group"></ul>
+        </div>
+        <div class="mb-3">
+          <h5>🌍 Community Goal</h5>
+          <div>Total Carbon Offset This Month: <span id="communityCarbon">0</span> kg</div>
+          <div class="progress mt-1" style="height:15px; border-radius:10px;">
+            <div id="communityGoalProgress" class="progress-bar"></div>
+          </div>
+        </div>
+        <div>
+          <h5>✍️ Make a Pledge</h5>
+          <input id="pledgeInput" class="form-control mb-2" placeholder="I will carry my own bag">
+          <button class="btn btn-primary mb-2" onclick="addPledge()">Commit</button>
+          <ul id="pledgeList" class="list-group"></ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<audio id="chime" src="https://assets.mixkit.co/active_storage/sfx/257/257-preview.mp3"></audio>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+
+<script>
+// ===== Backend API Integration =====
+const API_BASE = 'http://localhost:3000/api';
+let currentUser = null;
+
+// Utility functions
+function showMessage(message, type = 'info') {
+  const messageEl = document.getElementById('loginMessage');
+  messageEl.textContent = message;
+  messageEl.className = `mt-2 text-center text-${type === 'error' ? 'danger' : 'success'}`;
+  setTimeout(() => messageEl.textContent = '', 3000);
+}
+
+function setLoading(loading) {
+  document.body.classList.toggle('loading', loading);
+}
+
+// ===== Auth =====
+async function register() {
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  
+  if (!email || !password) {
+    showMessage('Please fill all fields', 'error');
+    return;
+  }
+
+  setLoading(true);
+  try {
+    const response = await fetch(`${API_BASE}/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    
+    const data = await response.json();
+    if (response.ok) {
+      showMessage('Registered successfully! Please login.');
+      document.getElementById('email').value = '';
+      document.getElementById('password').value = '';
+    } else {
+      showMessage(data.message, 'error');
+    }
+  } catch (error) {
+    showMessage('Registration failed. Make sure backend is running.', 'error');
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function login() {
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  
+  if (!email || !password) {
+    showMessage('Please fill all fields', 'error');
+    return;
+  }
+
+  setLoading(true);
+  try {
+    const response = await fetch(`${API_BASE}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    
+    const data = await response.json();
+    if (response.ok) {
+      currentUser = data.user;
+      document.getElementById('loginPage').style.display = 'none';
+      document.getElementById('dashboard').style.display = 'block';
+      document.getElementById('userEmail').innerText = email;
+      show('stats');
+      showMessage('Login successful!', 'success');
+    } else {
+      showMessage(data.message, 'error');
+    }
+  } catch (error) {
+    showMessage('Login failed. Make sure backend is running on port 3000.', 'error');
+  } finally {
+    setLoading(false);
+  }
+}
+
+function logout() {
+  currentUser = null;
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('loginPage').style.display = 'block';
+  document.getElementById('email').value = '';
+  document.getElementById('password').value = '';
+  showMessage('Logged out successfully', 'success');
+}
+
+// ===== Navigation =====
+function show(id) {
+  ['stats','pickup','guide','quiz','funInteractions','communitySection'].forEach(x => 
+    document.getElementById(x).style.display = 'none'
+  );
+  document.getElementById(id).style.display = 'block';
+  
+  if (id === 'stats') loadStats();
+  if (id === 'pickup') loadPickupTracker();
+  if (id === 'quiz') startQuiz();
+  if (id === 'funInteractions') initSortingGame();
+  if (id === 'communitySection') {
+    updateCommunityLeaderboard();
+    updateCommunityGoal();
+    renderPledges();
+  }
+}
+
+// ===== Dashboard =====
+async function loadStats() {
+  if (!currentUser) return;
+  
+  try {
+    const response = await fetch(`${API_BASE}/stats/${currentUser.email}`);
+    if (!response.ok) throw new Error('Failed to load stats');
+    
+    const stats = await response.json();
+    
+    // Update stats
+    document.getElementById('itemsRecycled').innerText = stats.itemsRecycled;
+    document.getElementById('totalWeight').innerText = stats.totalWeight;
+    document.getElementById('carbonOffset').innerText = stats.carbonOffset;
+    document.getElementById('xpEarned').innerText = stats.xpEarned;
+    document.getElementById('totalPickups').innerText = stats.totalPickups;
+    document.getElementById('streakDays').innerText = stats.streakDays;
+    document.getElementById('badgesEarned').innerText = stats.badgesEarned;
+    
+    // Update charts
+    updateCharts(stats);
+    
+    // Carbon Progress
+    const goal = 100;
+    const percent = Math.min(100, Math.round(stats.carbonOffset / goal * 100));
+    const carbonProgress = document.getElementById('carbonProgress');
+    carbonProgress.style.width = percent + '%';
+    carbonProgress.innerText = percent + '%';
+    
+    // Impact equivalents
+    document.getElementById('impactEquivalents').innerText = `🌳 Trees saved: ${Math.floor(stats.carbonOffset/5)} | 💧 Water saved: ${stats.itemsRecycled * 10}L | ⚡ Energy saved: ${stats.itemsRecycled * 3} kWh`;
+    
+  } catch (error) {
+    console.error('Error loading stats:', error);
+  }
+}
+
+function updateCharts(stats) {
+  // Monthly Bar Chart
+  const ctx = document.getElementById('monthlyChart').getContext('2d');
+  if (window.monthlyChartObj) window.monthlyChartObj.destroy();
+  window.monthlyChartObj = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ["Jan", "Feb", "Mar", "Apr"],
+      datasets: [{
+        data: [stats.itemsRecycled/4, stats.itemsRecycled/3, stats.itemsRecycled/2, stats.itemsRecycled],
+        backgroundColor: "#a1c4fd"
+      }]
+    },
+    options: { 
+      plugins: { legend: { display: false } },
+      scales: {
+        y: {
+          beginAtZero: true
+        }
+      }
+    }
+  });
+
+  // Materials Pie Chart
+  const ctx2 = document.getElementById('materialsChart').getContext('2d');
+  if (window.materialsChartObj) window.materialsChartObj.destroy();
+  window.materialsChartObj = new Chart(ctx2, {
+    type: 'pie',
+    data: {
+      labels: ["Plastics", "Metal", "Paper"],
+      datasets: [{
+        data: [40, 30, 30],
+        backgroundColor: ["#a1c4fd", "#fbc2eb", "#c2e9fb"]
+      }]
+    }
+  });
+
+  // Quiz Doughnut
+  const ctx3 = document.getElementById('quizChart').getContext('2d');
+  if (window.quizChartObj) window.quizChartObj.destroy();
+  window.quizChartObj = new Chart(ctx3, {
+    type: 'doughnut', 
+    data: {
+      labels: ["Score", "Remaining"],
+      datasets: [{
+        data: [6, 4],
+        backgroundColor: ["#a1c4fd", "#fbc2eb"]
+      }]
+    }
+  });
+}
+
+// ===== Schedule Pickup =====
+async function schedulePickup() {
+  if (!currentUser) return;
+  
+  const date = document.getElementById('pickupDate').value;
+  const location = document.getElementById('pickupLocation').value;
+  const pickupType = document.getElementById('pickupType').value;
+  const time = document.getElementById('pickupTime').value;
+  const phone = document.getElementById('pickupPhone').value;
+  const materials = [...document.querySelectorAll('#pickupMaterials input[type=checkbox]:checked')].map(i => i.value);
+  const notes = document.getElementById('pickupNotes').value;
+  
+  if (!date || !location || !pickupType || !time || !phone || materials.length === 0) {
+    alert("Please fill all required fields!");
+    return;
+  }
+  
+  try {
+    const response = await fetch(`${API_BASE}/pickups`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user: currentUser.email,
+        date,
+        location,
+        pickupType,
+        time,
+        phone,
+        materials,
+        notes
+      })
+    });
+    
+    if (response.ok) {
+      alert("✅ Pickup scheduled successfully!");
+      playChime();
+      loadPickupTracker();
+      loadStats();
+      // Clear form
+      document.querySelectorAll('#pickup input, #pickup textarea, #pickup select').forEach(field => {
+        if (field.type !== 'checkbox') field.value = '';
+      });
+      document.querySelectorAll('#pickupMaterials input[type=checkbox]').forEach(cb => cb.checked = false);
+    } else {
+      const data = await response.json();
+      alert("Failed to schedule pickup: " + data.message);
+    }
+  } catch (error) {
+    alert("Error scheduling pickup: " + error.message);
+  }
+}
+
+async function loadPickupTracker() {
+  if (!currentUser) return;
+  
+  try {
+    const response = await fetch(`${API_BASE}/pickups/${currentUser.email}`);
+    const pickups = await response.json();
+    
+    const pickupTracker = document.getElementById('pickupTracker');
+    pickupTracker.innerHTML = "";
+    pickups.forEach((p) => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${p.date}</td>
+        <td>${p.time}</td>
+        <td>${p.location}</td>
+        <td>${p.pickupType}</td>
+        <td>${p.phone}</td>
+        <td>${p.materials.join(", ")}</td>
+        <td>${p.notes}</td>
+        <td>${p.status}</td>
+        <td>
+          ${p.status === 'Scheduled' ? 
+            `<button class="btn btn-sm btn-success" onclick="markCompleted('${p._id}')">Complete</button>` : 
+            'Completed'
+          }
+        </td>`;
+      pickupTracker.appendChild(row);
+    });
+  } catch (error) {
+    console.error('Error loading pickups:', error);
+  }
+}
+
+async function markCompleted(pickupId) {
+  try {
+    const response = await fetch(`${API_BASE}/pickups/${pickupId}/complete`, {
+      method: 'PUT'
+    });
+    
+    if (response.ok) {
+      loadPickupTracker();
+      loadStats();
+      confettiEffect();
+      playChime();
+      alert("🎉 Pickup completed! XP earned!");
+    } else {
+      alert("Failed to mark pickup as completed");
+    }
+  } catch (error) {
+    console.error('Error completing pickup:', error);
+    alert("Error completing pickup");
+  }
+}
+
+// ===== Community Functions =====
+async function updateCommunityLeaderboard() {
+  try {
+    const response = await fetch(`${API_BASE}/community/leaderboard`);
+    const leaderboard = await response.json();
+    
+    document.getElementById('communityLeaderboard').innerHTML = leaderboard.map((u, i) => 
+      `<li class="list-group-item">${i + 1}. ${u.email} - ${u.xp} XP ♻️ ${u.badges && u.badges.length > 0 ? '🏅' : ''}</li>`
+    ).join('');
+  } catch (error) {
+    console.error('Error loading leaderboard:', error);
+  }
+}
+
+async function updateCommunityGoal() {
+  try {
+    const response = await fetch(`${API_BASE}/community/goal`);
+    const data = await response.json();
+    
+    const goal = 1000;
+    const percent = Math.min(100, Math.round(data.totalCarbon / goal * 100));
+    document.getElementById('communityCarbon').innerText = data.totalCarbon;
+    const progressBar = document.getElementById('communityGoalProgress');
+    progressBar.style.width = percent + '%';
+    progressBar.innerText = percent + '%';
+    progressBar.className = `progress-bar ${percent >= 75 ? 'bg-success' : percent >= 50 ? 'bg-warning' : 'bg-danger'}`;
+  } catch (error) {
+    console.error('Error loading community goal:', error);
+  }
+}
+
+async function addPledge() {
+  if (!currentUser) return;
+  
+  const pledge = document.getElementById('pledgeInput').value.trim();
+  if (!pledge) return alert("Enter a pledge!");
+  
+  try {
+    const response = await fetch(`${API_BASE}/pledges`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user: currentUser.email,
+        pledge
+      })
+    });
+    
+    if (response.ok) {
+      document.getElementById('pledgeInput').value = "";
+      renderPledges();
+      alert("✅ Pledge committed! +5 XP");
+      playChime();
+    } else {
+      alert("Failed to add pledge");
+    }
+  } catch (error) {
+    console.error('Error adding pledge:', error);
+    alert("Error adding pledge");
+  }
+}
+
+async function renderPledges() {
+  try {
+    const response = await fetch(`${API_BASE}/pledges`);
+    const pledges = await response.json();
+    
+    document.getElementById('pledgeList').innerHTML = pledges.map(pl => 
+      `<li class="list-group-item">✍️ ${pl.user}: ${pl.pledge}</li>`
+    ).join('');
+  } catch (error) {
+    console.error('Error loading pledges:', error);
+  }
+}
+
+// ===== Quiz Functions =====
+const qs = [
+  {q: "Which is NOT recyclable?", opts: ["Can", "Jar", "Soiled Pizza box"], a: 2},
+  {q: "Aluminum can be recycled?", opts: ["Once", "Infinitely"], a: 1},
+  {q: "Paper can be recycled?", opts: ["Yes", "No"], a: 0},
+  {q: "Plastic bags are?", opts: ["Recyclable", "Not Recyclable"], a: 1},
+  {q: "Glass bottles?", opts: ["Yes", "No"], a: 0},
+  {q: "Composting food scraps?", opts: ["Yes", "No"], a: 0}
+];
+
+let qi = 0, score = 0, quizStreak = 0;
+
+function startQuiz() {
+  qi = 0; score = 0; quizStreak = 0;
+  document.getElementById('quizDone').style.display = 'none';
+  document.getElementById('questionArea').style.display = 'block';
+  loadQ();
+}
+
+function loadQ() {
+  let q = qs[qi];
+  document.getElementById('questionNumber').innerText = "Q " + (qi + 1) + "/" + qs.length;
+  document.getElementById('questionText').innerText = q.q;
+  document.getElementById('options').innerHTML = '';
+  q.opts.forEach((o, i) => {
+    let d = document.createElement('div');
+    d.className = 'quiz-option';
+    d.innerText = o;
+    d.onclick = () => selectOpt(d, i === q.a);
+    document.getElementById('options').appendChild(d);
+  });
+  document.getElementById('nextQ').disabled = true;
+}
+
+function selectOpt(d, ok) {
+  document.querySelectorAll('.quiz-option').forEach(x => x.onclick = null);
+  if (ok) {
+    d.classList.add('correct');
+    score++;
+    quizStreak++;
+  } else {
+    d.classList.add('incorrect');
+    quizStreak = 0;
+  }
+  const quizStreakEl = document.getElementById('quizStreak');
+  if (quizStreakEl) {
+    quizStreakEl.innerText = `Streak: ${quizStreak}`;
+  }
+  document.getElementById('nextQ').disabled = false;
+}
+
+function nextQuestion() {
+  qi++;
+  if (qi < qs.length) loadQ();
+  else finishQuiz();
+}
+
+function finishQuiz() {
+  document.getElementById('questionArea').style.display = 'none';
+  document.getElementById('quizDone').style.display = 'block';
+  document.getElementById('quizScore').innerText = score + "/" + qs.length;
+  confettiEffect();
+  playChime();
+  
+  if (score === qs.length) {
+    document.getElementById('quizScore').innerHTML += '<br>🎉 Perfect Score!';
+  } else if (score >= qs.length * 0.7) {
+    document.getElementById('quizScore').innerHTML += '<br>👍 Great Job!';
+  }
+}
+
+// ===== Fun Interaction Drag & Drop Game =====
+let gameScoreCount = 0;
+
+function initSortingGame() {
+  const itemsPool = document.getElementById('itemsPool');
+  itemsPool.innerHTML = "<p class='text-muted'>Drag items from here to the correct bins</p>";
+  gameScoreCount = 0;
+  document.getElementById('gameScore').innerText = "Score: 0";
+  
+  let items = ["Plastic Bottle", "Glass Jar", "Aluminum Can", "Pizza Box", "Plastic Bag", "Newspaper"];
+  items.forEach(it => {
+    let d = document.createElement('div');
+    d.className = 'draggable-item';
+    d.innerText = it;
+    d.draggable = true;
+    d.ondragstart = (e) => {
+      e.dataTransfer.setData("text", it);
+    };
+    itemsPool.appendChild(d);
+  });
+
+  [document.getElementById('recyclableBin'), document.getElementById('nonRecyclableBin')].forEach(bin => {
+    bin.ondragover = (e) => e.preventDefault();
+    bin.ondrop = (e) => {
+      e.preventDefault();
+      let data = e.dataTransfer.getData("text");
+      
+      const recyclableItems = ["Plastic Bottle", "Glass Jar", "Aluminum Can", "Newspaper"];
+      const nonRecyclableItems = ["Pizza Box", "Plastic Bag"];
+      
+      if (bin.id === "recyclableBin" && recyclableItems.includes(data)) {
+        gameScoreCount += 1;
+        bin.style.background = "#4caf50";
+      } else if (bin.id === "nonRecyclableBin" && nonRecyclableItems.includes(data)) {
+        gameScoreCount += 1;
+        bin.style.background = "#4caf50";
+      } else {
+        gameScoreCount -= 1;
+        bin.style.background = "#f44336";
+      }
+      
+      document.getElementById('gameScore').innerText = "Score: " + gameScoreCount;
+      
+      setTimeout(() => {
+        if (bin.id === "recyclableBin") {
+          bin.style.background = "#198754";
+        } else {
+          bin.style.background = "#dc3545";
+        }
+      }, 500);
+      
+      e.dataTransfer.clearData();
+    };
+  });
+}
+
+// ===== Confetti & Sound =====
+function confettiEffect() {
+  confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+}
+
+function playChime() {
+  const chime = document.getElementById('chime');
+  chime.currentTime = 0;
+  chime.play().catch(e => console.log('Audio play failed:', e));
+}
+
+// Initialize the app
+document.addEventListener('DOMContentLoaded', function() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('pickupDate').min = today;
+  console.log('EcoCollect app initialized!');
+});
+</script>
+
+</body>
+</html>
